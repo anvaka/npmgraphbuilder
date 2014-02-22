@@ -29,6 +29,8 @@ module.exports = function (http) {
           // continue building the graph
           return processQueue(graph);
         }
+
+        return graph;
       }
     );
   }
