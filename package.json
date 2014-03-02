@@ -1,6 +1,6 @@
 {
   "name": "npmgraphbuilder",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Builds graph of npm dependencies from npm registry",
   "main": "index.js",
   "scripts": {
@@ -21,6 +21,7 @@
   "devDependencies": {
     "tap": "~0.4.8",
     "q": "~1.0.0",
-    "ngraph.graph": "0.0.2"
+    "ngraph.graph": "0.0.2",
+    "ngraph.serialization": "0.0.3"
   }
 }

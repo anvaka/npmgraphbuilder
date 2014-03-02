@@ -9,6 +9,9 @@ graphBuilder.createNpmDependenciesGraph(pkgName, graph).
     console.log('Done.');
     console.log('Nodes count: ', graph.getNodesCount());
     console.log('Edges count: ', graph.getLinksCount());
+    console.log('Graph:');
+    var serializer = require('ngraph.serialization/json');
+    console.log(serializer.save(graph));
   })
   .fail(function (err) {
     console.error('Failed to build graph: ', err);
