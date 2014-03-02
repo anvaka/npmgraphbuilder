@@ -1,5 +1,6 @@
 module.exports = function (http, url) {
-  url = url || 'http://registry.npmjs.org/-/_view/byField';
+  //url = url || 'http://registry.npmjs.org/-/_view/byField';
+  url = url || 'http://isaacs.iriscouch.com/registry/_design/scratch/_view/byField';
   var packagesPerRequest = 20;
   var resolvedNodes = [], queue = [];
 
