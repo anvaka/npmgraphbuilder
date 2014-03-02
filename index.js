@@ -1,5 +1,5 @@
-module.exports = function (http) {
-  var url = 'http://registry.npmjs.org/-/_view/byField';
+module.exports = function (http, url) {
+  url = url || 'http://registry.npmjs.org/-/_view/byField';
   var packagesPerRequest = 20;
   var resolvedNodes = [], queue = [];
 
