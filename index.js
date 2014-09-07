@@ -3,6 +3,7 @@ module.exports = function (http, url) {
   url = url || 'http://isaacs.iriscouch.com/registry/_design/scratch/_view/byField';
   var packagesPerRequest = 20;
   var resolvedNodes = [], queue = [];
+  var progress;
 
   return {
     createNpmDependenciesGraph: function (packageName, graph) {
@@ -12,10 +13,17 @@ module.exports = function (http, url) {
       graph.addNode(packageName);
       queue.push(packageName);
       return processQueue(graph);
+    },
+    notifyProgress: function (cb) {
+      progress = cb;
     }
   };
 
   function processQueue(graph) {
+    if (typeof progress === 'function') {
+      progress(queue.length);
+    }
+
     var packages = queue.slice(0, packagesPerRequest);
     queue = queue.slice(packagesPerRequest);
     return http(url, {keys: JSON.stringify(packages)}).then(
