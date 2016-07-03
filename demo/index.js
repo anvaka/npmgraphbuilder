@@ -2,7 +2,7 @@ var graph = require('ngraph.graph')();
 var graphBuilder = require('../')(httpClient);
 
 var pkgName = process.argv[2] || 'browserify';
-console.log('building dependencies graph for ', pkgName);
+console.log('building dependencies graph for', pkgName);
 
 graphBuilder.createNpmDependenciesGraph(pkgName, graph).
   then(function (graph) {

@@ -1,38 +1,64 @@
+var npa = require('npm-package-arg');
+var guessVersion = require('./lib/guessVersion.js');
+var Promise = require('bluebird');
+
 module.exports = function (http, url) {
-  //url = url || 'http://registry.npmjs.org/-/_view/byField';
-  url = url || 'http://isaacs.iriscouch.com/registry/_design/scratch/_view/byField';
-  var packagesPerRequest = 20;
-  var resolvedNodes = [], queue = [];
+  url = url || 'http://registry.npmjs.org/';
+  if (url[url.length - 1] !== '/') {
+    throw new Error('registry url is supposed to end with /');
+  }
   var progress;
+  var cache = Object.create(null);
 
   return {
-    createNpmDependenciesGraph: function (packageName, graph) {
-      if (!packageName) throw new Error('Initial package name is required');
-      if (!graph) throw new Error('Graph data structure is required');
-
-      graph.addNode(packageName);
-      queue.push(packageName);
-      return processQueue(graph);
-    },
+    createNpmDependenciesGraph: createNpmDependenciesGraph,
     notifyProgress: function (cb) {
       progress = cb;
     }
   };
 
-  function processQueue(graph) {
-    if (typeof progress === 'function') {
-      progress(queue.length);
-    }
+  function createNpmDependenciesGraph(packageName, graph, version) {
+    if (!packageName) throw new Error('Initial package name is required');
+    if (!graph) throw new Error('Graph data structure is required');
+    if (!version) version = 'latest';
 
-    var packages = queue.slice(0, packagesPerRequest);
-    queue = queue.slice(packagesPerRequest);
-    return http(url, {keys: JSON.stringify(packages)}).then(
+    var queue = [];
+    var processed = Object.create(null);
+
+    queue.push({
+      name: packageName,
+      version: version,
+      parent: null
+    });
+
+    return processQueue(graph);
+
+    function processQueue(graph) {
+      if (typeof progress === 'function') {
+        progress(queue.length);
+      }
+
+      var work = queue.pop();
+
+      // TODO: This will not work for non-npm names (e.g. git+https://, etc.)
+      var escapedName = npa(work.name).escapedName;
+      if (!escapedName) {
+        // this will not work for non-npm packages. e.g. git+https:// , etc.
+        throw new Error('TODO: Escaped name is missing for ' + work.name);
+      }
+
+      var cached = cache[work.name];
+      if (cached) {
+        return new Promise(function(resolve) {
+          resolve(processRegistryResponse(cached));
+        });
+      }
+
+      return http(url + escapedName).then(processRegistryResponse);
+
       function processRegistryResponse(res) {
-        if (!res || !res.data || !res.data.rows) {
-          throw new Error('Could not fetch package information from the registry');
-        }
-
-        addToGraph(res.data.rows, graph);
+        cache[work.name] = res;
+        traverseDependencies(work, res.data);
 
         if (queue.length) {
           // continue building the graph
@@ -41,41 +67,39 @@ module.exports = function (http, url) {
 
         return graph;
       }
-    );
-  }
-
-
-  function addToGraph(packages, graph) {
-    graph.beginUpdate();
-
-    packages.forEach(addNode);
-    resolvedNodes.forEach(updateEdges);
-
-    graph.endUpdate();
-
-    function addNode(pkg) {
-      graph.addNode(pkg.id, pkg.value);
-      resolvedNodes.push(pkg.value);
     }
 
-    function updateEdges(pkg) {
+    function traverseDependencies(work, packageJson) {
+      var version = guessVersion(work.version, packageJson);
+      var pkg = packageJson.versions[version];
+
+      var id = pkg._id;
+      if (processed[id]) return;
+      processed[id] = true;
+
+      // TODO: here is a good place to address https://github.com/anvaka/npmgraph.an/issues/4
       var dependencies = pkg.dependencies;
-      if (!dependencies) return;
-      if (!pkg._id) return; // sometimes this may happen. See https://github.com/npm/npm/issues/4665
 
-      var nodeId = pkg._id.split('@')[0];
+      graph.beginUpdate();
 
-      Object.keys(dependencies).forEach(function (otherNode) {
-        if (graph.hasLink(nodeId, otherNode)) return;
-
-        if (!graph.getNode(otherNode)) {
-          // this node is not yet fetched, schedule it and add place holder
-          // into a graph:
-          queue.push(otherNode);
-          graph.addNode(otherNode, {});
+        graph.addNode(id, pkg);
+        if (work.parent && !graph.hasLink(work.parent, id)) {
+          graph.addLink(work.parent, id);
         }
-        graph.addLink(nodeId, otherNode);
-      });
+
+      graph.endUpdate();
+
+      if (dependencies) {
+        Object.keys(dependencies).forEach(addToQueue);
+      }
+
+      function addToQueue(name) {
+          queue.push({
+            name: name,
+            version: dependencies[name],
+            parent: id
+          })
+        }
     }
   }
 };

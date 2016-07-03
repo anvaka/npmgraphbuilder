@@ -23,5 +23,9 @@
     "q": "~1.0.0",
     "ngraph.graph": "0.0.2",
     "ngraph.serialization": "0.0.3"
+  },
+  "dependencies": {
+    "bluebird": "^3.4.1",
+    "npm-package-arg": "^4.2.0"
   }
 }
