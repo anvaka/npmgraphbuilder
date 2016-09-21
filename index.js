@@ -2,7 +2,10 @@ var npa = require('npm-package-arg');
 var guessVersion = require('./lib/guessVersion.js');
 var Promise = require('bluebird');
 
-module.exports = function (http, url) {
+module.exports = buildGraph;
+module.exports.isRemote = isRemote;
+
+function buildGraph(http, url) {
   url = url || 'http://registry.npmjs.org/';
   if (url[url.length - 1] !== '/') {
     throw new Error('registry url is supposed to end with /');
@@ -40,18 +43,23 @@ module.exports = function (http, url) {
 
       var work = queue.pop();
 
-      // TODO: This will not work for non-npm names (e.g. git+https://, etc.)
-      var escapedName = npa(work.name).escapedName;
-      if (!escapedName) {
-        // this will not work for non-npm packages. e.g. git+https:// , etc.
-        throw new Error('TODO: Escaped name is missing for ' + work.name);
-      }
-
       var cached = cache[work.name];
       if (cached) {
         return new Promise(function(resolve) {
           resolve(processRegistryResponse(cached));
         });
+      }
+
+      if (isRemote(work.version)) {
+        // TODO: This will not download remote dependnecies (e.g. git-based)
+        return new Promise(function(resolve) {
+          resolve(processRegistryResponse({data: {}}));
+        });
+      }
+
+      var escapedName = npa(work.name).escapedName;
+      if (!escapedName) {
+        throw new Error('TODO: Escaped name is missing for ' + work.name);
       }
 
       return http(url + escapedName).then(processRegistryResponse);
@@ -70,10 +78,17 @@ module.exports = function (http, url) {
     }
 
     function traverseDependencies(work, packageJson) {
-      var version = guessVersion(work.version, packageJson);
-      var pkg = packageJson.versions[version];
+      var version, pkg, id;
+      if (isRemote(work.version)) {
+        version = '';
+        pkg = packageJson;
+        id = work.version;
+      } else {
+        version = guessVersion(work.version, packageJson);
+        pkg = packageJson.versions[version];
+        id = pkg._id;
+      }
 
-      var id = pkg._id;
       if (processed[id]) return;
       processed[id] = true;
 
@@ -82,10 +97,11 @@ module.exports = function (http, url) {
 
       graph.beginUpdate();
 
-        graph.addNode(id, pkg);
-        if (work.parent && !graph.hasLink(work.parent, id)) {
-          graph.addLink(work.parent, id);
-        }
+      graph.addNode(id, pkg);
+
+      if (work.parent && !graph.hasLink(work.parent, id)) {
+        graph.addLink(work.parent, id);
+      }
 
       graph.endUpdate();
 
@@ -102,4 +118,12 @@ module.exports = function (http, url) {
         }
     }
   }
-};
+}
+
+function isRemote(version) {
+  return typeof version === 'string' && (
+    (version.indexOf('git') === 0) ||
+    (version.indexOf('http') === 0) ||
+    (version.indexOf('file') === 0)
+  );
+}
