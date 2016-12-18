@@ -95,9 +95,6 @@ function buildGraph(http, url) {
         id = pkg._id;
       }
 
-      if (processed[id]) return;
-      processed[id] = true;
-
       // TODO: here is a good place to address https://github.com/anvaka/npmgraph.an/issues/4
       var dependencies = pkg.dependencies;
 
@@ -110,6 +107,12 @@ function buildGraph(http, url) {
       }
 
       graph.endUpdate();
+
+      if (processed[id]) {
+        // no need to enqueue this package again - we already downladed it before
+        return;
+      }
+      processed[id] = true;
 
       if (dependencies) {
         Object.keys(dependencies).forEach(addToQueue);
