@@ -43,7 +43,7 @@ function buildGraph(http, url) {
 
       var work = queue.pop();
 
-      var cached = cache[work.name];
+      var cached = cache[getCacheKey(work)];
       if (cached) {
         return new Promise(function(resolve) {
           resolve(processRegistryResponse(cached));
@@ -65,7 +65,7 @@ function buildGraph(http, url) {
       return http(url + escapedName).then(processRegistryResponse);
 
       function processRegistryResponse(res) {
-        cache[work.name] = res;
+        cache[getCacheKey(work)] = res;
         traverseDependencies(work, res.data);
 
         if (queue.length) {
@@ -75,6 +75,12 @@ function buildGraph(http, url) {
 
         return graph;
       }
+    }
+
+    function getCacheKey(work) {
+      var packageIsRemote = isRemote(work.version);
+      var cacheKey = work.name;
+      return packageIsRemote ? cacheKey + work.version : cacheKey
     }
 
     function traverseDependencies(work, packageJson) {
