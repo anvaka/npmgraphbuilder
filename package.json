@@ -1,6 +1,6 @@
 {
   "name": "npmgraphbuilder",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Builds graph of npm dependencies from npm registry",
   "main": "index.js",
   "scripts": {
