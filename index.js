@@ -51,13 +51,29 @@ function buildGraph(http, url) {
       }
 
       if (isRemote(work.version)) {
-        // TODO: This will not download remote dependnecies (e.g. git-based)
+        // TODO: This will not download remote dependencies (e.g. git-based)
         return new Promise(function(resolve) {
           resolve(processRegistryResponse({data: {}}));
         });
       }
 
       var escapedName = npa(work.name).escapedName;
+      if (!escapedName && isHttp(work.name)) {
+        return http(work.name).then(res => {
+          if (res.data) {
+            // TODO: Validate pkg json
+            var pkgJSON = res.data;
+            pkgJSON._id = pkgJSON.name + '@' + pkgJSON.version;
+            var versions = {};
+            versions[pkgJSON.version] = pkgJSON;
+
+            return processRegistryResponse({
+              data: Object.assign({}, { versions: versions })
+            });
+          }
+          throw new Error('Unexpected response');
+        });
+      }
       if (!escapedName) {
         throw new Error('TODO: Escaped name is missing for ' + work.name);
       }
@@ -109,7 +125,7 @@ function buildGraph(http, url) {
       graph.endUpdate();
 
       if (processed[id]) {
-        // no need to enqueue this package again - we already downladed it before
+        // no need to enqueue this package again - we already downloaded it before
         return;
       }
       processed[id] = true;
@@ -127,6 +143,10 @@ function buildGraph(http, url) {
         }
     }
   }
+}
+
+function isHttp(version) {
+  return typeof version === 'string' && version.match(/^https?:\/\//);
 }
 
 function isRemote(version) {
