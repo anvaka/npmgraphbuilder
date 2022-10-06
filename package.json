@@ -4,7 +4,7 @@
   "description": "Builds graph of npm dependencies from npm registry",
   "main": "index.js",
   "scripts": {
-    "test": "tap test/*.js"
+    "test": "tap --branches=30 --lines=30 --statements=30 --functions=30 test/*.js"
   },
   "keywords": [
     "npm",
@@ -19,14 +19,14 @@
     "url": "https://github.com/anvaka/npmgraphbuilder"
   },
   "devDependencies": {
-    "tap": "~0.4.8",
-    "q": "~1.0.0",
+    "tap": "~16.3.0",
+    "q": "~1.5.1",
     "ngraph.graph": "0.0.2",
     "ngraph.serialization": "0.0.3"
   },
   "dependencies": {
-    "bluebird": "^3.4.1",
-    "npm-package-arg": "^4.2.0",
-    "semver": "^5.2.0"
+    "bluebird": "^3.7.2",
+    "npm-package-arg": "^9.1.2",
+    "semver": "^7.3.8"
   }
 }
